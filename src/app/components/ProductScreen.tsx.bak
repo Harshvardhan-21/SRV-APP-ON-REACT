@@ -1,0 +1,99 @@
+import { useState } from 'react';
+
+interface ProductScreenProps {
+  onNavigate: (screen: 'home' | 'scan' | 'rewards' | 'profile' | 'product' | 'wallet') => void;
+}
+
+export function ProductScreen({ onNavigate }: ProductScreenProps) {
+  const [activeCategory, setActiveCategory] = useState('fanbox');
+
+  const categories = [
+    { id: 'fanbox', label: 'Fan Box' },
+    { id: 'junctionbox', label: 'Junction Box' },
+    { id: 'modularbox', label: 'Modular Box Draw Pc' }
+  ];
+
+  const products = [
+    { name: 'F8 3" 18/40 PC',  image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'FC 3" 18/40 PC',  image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'FDB 3" 18/40 PC', image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'F8 3" 22/28 PC',  image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'FC 3" 22/28 PC',  image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'FDB 3" 22/28 PC', image: '📦', points: 1, category: 'fanbox',      color: 'from-gray-100 to-gray-200' },
+    { name: 'JB 3x3" Deep',    image: '⚡', points: 1, category: 'junctionbox', color: 'from-blue-100 to-blue-200' },
+    { name: 'JB 4x4" Standard',image: '⚡', points: 1, category: 'junctionbox', color: 'from-blue-100 to-blue-200' },
+    { name: 'JB 6x6" Large',   image: '⚡', points: 1, category: 'junctionbox', color: 'from-blue-100 to-blue-200' },
+    { name: 'MB 2M Vertical',  image: '🔌', points: 1, category: 'modularbox',  color: 'from-orange-100 to-orange-200' },
+    { name: 'MB 4M Horizontal',image: '🔌', points: 1, category: 'modularbox',  color: 'from-orange-100 to-orange-200' },
+    { name: 'MB 6M Deep',      image: '🔌', points: 1, category: 'modularbox',  color: 'from-orange-100 to-orange-200' },
+  ];
+
+  const filteredProducts = products.filter(p => p.category === activeCategory);
+
+  return (
+    <div className="min-h-screen bg-[#F8F7FF]">
+      {/* Header */}
+      <div className="bg-white px-4 pt-6 pb-4 border-b border-[#F0F0F8] animate-fade-in-down">
+        <h1 className="text-[#2D3561] font-bold text-lg text-center mb-4">All Products</h1>
+
+        {/* Category Tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {categories.map((category, i) => (
+            <button
+              key={category.id}
+              onClick={() => setActiveCategory(category.id)}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 ripple-container animate-fade-in-up ${
+                activeCategory === category.id
+                  ? 'bg-[#FF6B6B] text-white shadow-md scale-105'
+                  : 'bg-white text-[#2D3561] border border-[#EDEDF5] hover:border-[#FF6B6B]/30'
+              }`}
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Products Grid */}
+      <div className="px-3 py-4">
+        <div className="grid grid-cols-2 gap-3">
+          {filteredProducts.map((product, idx) => (
+            <div
+              key={idx}
+              className="bg-white border border-[#EDEDF5] rounded-2xl overflow-hidden hover:shadow-lg transition-all hover-lift ripple-container animate-fade-in-up"
+              style={{ animationDelay: `${idx * 70}ms` }}
+            >
+              <div className={`h-32 bg-gradient-to-br ${product.color} flex items-center justify-center text-5xl relative overflow-hidden`}>
+                <span className="animate-float-y inline-block" style={{ animationDelay: `${idx * 0.3}s` }}>{product.image}</span>
+                <div className="absolute inset-0 shimmer opacity-20 pointer-events-none"></div>
+                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 animate-pop-in" style={{ animationDelay: `${0.2 + idx * 0.07}s` }}>
+                  <div className="text-[#FF6B6B] text-xs font-bold">+{product.points} pt</div>
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="text-[#2D3561] text-sm font-bold mb-1">{product.name}</div>
+                <div className="text-[#FF6B6B] text-xs font-semibold">Earn {product.points} Points</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="px-3 pb-6 animate-fade-in-up delay-500">
+        <div className="bg-gradient-to-br from-[#2D3561] to-[#3D4575] rounded-2xl p-4 text-white hover-lift">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="text-2xl animate-float-y inline-block">📦</div>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm mb-0.5">Scan to Earn Points!</h3>
+              <p className="text-white/70 text-xs leading-relaxed">
+                Every SRV product has a QR code. Scan it to earn reward points instantly.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
