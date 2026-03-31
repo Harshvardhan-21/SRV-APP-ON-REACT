@@ -1,232 +1,420 @@
-import { useState } from 'react';
-import { Zap, Check, ScanQrCode, Gift } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle2, LockKeyhole, UserRound } from 'lucide-react';
+import type { UserRole } from '../App';
+import srvLogo from '../../srv-logo.png';
 
 interface OnboardingScreenProps {
-  onGetStarted: () => void;
+  onGetStarted: (role: UserRole) => void;
 }
 
+const DEALER_DIRECTORY: Record<string, { dealerName: string; city: string }> = {
+  '9876543210': { dealerName: 'Shree Ganesh Electrical Traders', city: 'Jaipur' },
+  '9810012345': { dealerName: 'Mahalaxmi Power House', city: 'Delhi' },
+  '9001122334': { dealerName: 'Shiv Shakti Distributors', city: 'Lucknow' },
+};
+
+const ROLE_THEME: Record<UserRole, {
+  accent: string;
+  badge: string;
+  button: string;
+  field: string;
+  hero: string;
+  panel: string;
+  selected: string;
+  selectedIcon: string;
+}> = {
+  electrician: {
+    accent: 'text-[#C64537]',
+    badge: 'bg-[#FFE7E2] text-[#CC4A38]',
+    button: 'bg-gradient-to-r from-[#FF695A] via-[#FF7E45] to-[#FFB347]',
+    field: 'border-[#FFD8D1] focus-within:border-[#FF8D73] focus-within:ring-[#FFE2DA]',
+    hero: 'from-[#E7A334] via-[#6D2E12] to-[#0A0A10]',
+    panel: 'from-[#FFF1EC] to-[#FFE4DA]',
+    selected: 'border-[#FF8C73] bg-gradient-to-br from-[#FFF0EC] to-[#FFE7DE] shadow-[0_14px_30px_rgba(255,105,90,0.16)]',
+    selectedIcon: 'bg-[#FF695A] text-white',
+  },
+  dealer: {
+    accent: 'text-[#35538E]',
+    badge: 'bg-[#E7F0FF] text-[#3C5F9A]',
+    button: 'bg-gradient-to-r from-[#3B5C98] via-[#4D74B9] to-[#7DA0E8]',
+    field: 'border-[#D6E1F8] focus-within:border-[#7DA0E8] focus-within:ring-[#E8F0FF]',
+    hero: 'from-[#D5AB5B] via-[#2C416F] to-[#090A12]',
+    panel: 'from-[#EEF4FF] to-[#E1EAFF]',
+    selected: 'border-[#89A7E6] bg-gradient-to-br from-[#EEF4FF] to-[#E3EBFF] shadow-[0_14px_30px_rgba(77,116,185,0.16)]',
+    selectedIcon: 'bg-[#4D74B9] text-white',
+  },
+};
+
 export function OnboardingScreen({ onGetStarted }: OnboardingScreenProps) {
-  const [step, setStep] = useState<'landing' | 'login'>('landing');
-  const [userType, setUserType] = useState<'electrician' | 'dealer'>('electrician');
-  const [phone, setPhone] = useState('');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [userType, setUserType] = useState<UserRole>('electrician');
+  const [roleLocked, setRoleLocked] = useState(false);
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginOtp, setLoginOtp] = useState('');
+  const [loginOtpSent, setLoginOtpSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
+  const [signupOtp, setSignupOtp] = useState('');
+  const [signupOtpSent, setSignupOtpSent] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [dealerPhone, setDealerPhone] = useState('');
+  const [dealerVerified, setDealerVerified] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const isDealer = userType === 'dealer';
+  const theme = ROLE_THEME[userType];
+  const matchedDealer = dealerPhone.length === 10 ? DEALER_DIRECTORY[dealerPhone] : undefined;
+  const roleHeading = 'Welcome to SRV';
+  const roleDescription = isDealer
+    ? 'Dealer-focused access for business onboarding, secure login, and verified registration.'
+    : 'Electrician-focused access for secure login, QR rewards onboarding, and verified registration.';
+  useEffect(() => {
+    if (loginPhone.length === 10) {
+      setLoginOtpSent(true);
+    } else {
+      setLoginOtpSent(false);
+      setLoginOtp('');
+    }
+  }, [loginPhone]);
+
+  useEffect(() => {
+    if (signupPhone.length === 10) {
+      setSignupOtpSent(true);
+    } else {
+      setSignupOtpSent(false);
+      setSignupOtp('');
+    }
+  }, [signupPhone]);
+
+  const canContinue = useMemo(() => {
+    if (mode === 'login') {
+      return loginPhone.length === 10 && loginOtp.length === 4 && password.trim().length >= 6;
+    }
+
+    if (fullName.trim().length < 3 || signupPhone.length !== 10 || signupOtp.length !== 4) {
+      return false;
+    }
+
+    if (isDealer) {
+      return businessName.trim().length >= 3;
+    }
+
+    return dealerPhone.length === 10;
+  }, [businessName, dealerPhone.length, fullName, isDealer, loginOtp.length, loginPhone.length, mode, password, signupOtp.length, signupPhone.length]);
+
+  const handleVerifyDealer = () => {
+    setDealerVerified(Boolean(matchedDealer));
+  };
+
   const handleContinue = () => {
-    if (phone.length < 10) return;
+    if (!canContinue) return;
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      onGetStarted();
-    }, 1400);
+      onGetStarted(userType);
+    }, 1200);
   };
 
-  if (step === 'login') {
-    return (
-      <div
-        style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
-          maxWidth: 448, margin: '0 auto', position: 'relative', overflow: 'hidden',
-          background: 'linear-gradient(160deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)',
-          fontFamily: 'inherit',
-        }}
-      >
-        <style>{`
-          @keyframes blobFloat1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(15px,-20px) scale(1.05)}66%{transform:translate(-8px,12px) scale(0.95)}}
-          @keyframes blobFloat2{0%,100%{transform:translate(0,0) scale(1)}40%{transform:translate(-12px,18px) scale(1.08)}70%{transform:translate(10px,-10px) scale(0.92)}}
-          @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-          @keyframes fadeInUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-          @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
-          @keyframes spinR{to{transform:rotate(360deg)}}
-          @keyframes shimmerPass{from{left:-100%}to{left:150%}}
-          .login-anim{animation:slideUp 0.55s cubic-bezier(0.34,1.4,0.64,1) both}
-          .f1{animation:fadeInUp 0.45s ease both 0.08s}
-          .f2{animation:fadeInUp 0.45s ease both 0.16s}
-          .f3{animation:fadeInUp 0.45s ease both 0.24s}
-          .f4{animation:fadeInUp 0.45s ease both 0.32s}
-          .f5{animation:fadeInUp 0.45s ease both 0.40s}
-          .f6{animation:fadeInUp 0.45s ease both 0.48s}
-          .chk{animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both}
-          .spin-el{width:20px;height:20px;border:2.5px solid rgba(255,255,255,0.25);border-top-color:white;border-radius:50%;animation:spinR 0.75s linear infinite}
-          .toggle-btn{transition:all 0.25s cubic-bezier(0.34,1.2,0.64,1)}
-          .cont-btn{position:relative;overflow:hidden;transition:all 0.3s ease}
-          .cont-btn::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:shimmerPass 2s ease infinite 1s}
-        `}</style>
+  const fieldClass = `w-full rounded-2xl border-2 bg-white px-4 py-3 text-sm text-[#221D29] outline-none transition ${theme.field}`;
 
-        {/* Blobs */}
-        <div style={{position:'absolute',width:320,height:320,background:'radial-gradient(circle,rgba(255,107,107,0.18) 0%,transparent 70%)',top:-80,right:-80,borderRadius:'50%',animation:'blobFloat1 8s ease-in-out infinite',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',width:250,height:250,background:'radial-gradient(circle,rgba(255,82,82,0.12) 0%,transparent 70%)',bottom:40,left:-60,borderRadius:'50%',animation:'blobFloat2 11s ease-in-out infinite',pointerEvents:'none'}}/>
+  return (
+    <div className="mx-auto min-h-screen max-w-md bg-[#F8F7FF] px-4 py-5">
+      <style>{`
+        @keyframes floatLogo {
+          0%,100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes plateRotate {
+          0%,100% { transform: rotate(-10deg) translateY(0px); }
+          50% { transform: rotate(-7deg) translateY(4px); }
+        }
+        .logo-float { animation: floatLogo 4.8s ease-in-out infinite; }
+        .plate-rotate { animation: plateRotate 4.8s ease-in-out infinite; }
+      `}</style>
 
-        {/* Back */}
-        <button
-          onClick={() => setStep('landing')}
-          style={{position:'absolute',top:22,left:18,background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:12,width:40,height:40,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.8)',fontSize:19,cursor:'pointer',zIndex:10,fontFamily:'inherit'}}
-        >←</button>
+      <div className="overflow-hidden rounded-[34px] border border-[#E7E4F1] bg-white shadow-[0_28px_60px_rgba(61,74,118,0.10)]">
+        <div className={`relative overflow-hidden bg-gradient-to-br ${theme.hero} px-5 pb-7 pt-4 text-white`}>
+          <div className="absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.05),transparent_45%,rgba(0,0,0,0.20))]" />
+          <div className="absolute -left-10 top-10 h-36 w-36 rounded-full bg-[radial-gradient(circle,_rgba(255,188,122,0.22),_transparent_70%)] blur-3xl" />
+          <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.10),_transparent_70%)] blur-3xl" />
 
-        <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',flex:1,justifyContent:'center',padding:'72px 24px 32px'}}>
-
-          {/* Logo */}
-          <div className="login-anim" style={{display:'flex',alignItems:'center',gap:14,marginBottom:32}}>
-            <div style={{width:54,height:54,background:'linear-gradient(135deg,#FF6B6B,#FF5252)',borderRadius:17,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 28px rgba(255,107,107,0.45)',flexShrink:0}}>
-              <Zap className="w-7 h-7 text-white" fill="white"/>
-            </div>
-            <div>
-              <div style={{color:'white',fontWeight:900,fontSize:22,letterSpacing:3}}>SRV</div>
-              <div style={{color:'rgba(255,255,255,0.38)',fontSize:10,letterSpacing:2,textTransform:'uppercase',marginTop:1}}>Electricals</div>
-            </div>
-          </div>
-
-          {/* Heading */}
-          <div className="f1" style={{marginBottom:28}}>
-            <h1 style={{color:'white',fontSize:27,fontWeight:800,margin:'0 0 7px',letterSpacing:-0.3}}>Welcome Back 👋</h1>
-            <p style={{color:'rgba(255,255,255,0.42)',fontSize:13.5,margin:0,lineHeight:1.5}}>Sign in to your smart rewards account</p>
-          </div>
-
-          {/* Label */}
-          <div className="f2" style={{color:'rgba(255,255,255,0.35)',fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:1.8,marginBottom:10}}>Login As</div>
-
-          {/* Toggle */}
-          <div className="f2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-            {(['electrician','dealer'] as const).map(type => (
+          <div className="relative z-10 text-center">
+            {roleLocked && (
               <button
-                key={type}
-                className="toggle-btn"
-                onClick={() => setUserType(type)}
-                style={{
-                  padding:'13px 12px',borderRadius:14,
-                  border: userType===type ? '1.5px solid #FF6B6B' : '1.5px solid rgba(255,255,255,0.1)',
-                  background: userType===type ? 'linear-gradient(135deg,#FF6B6B,#FF5252)' : 'rgba(255,255,255,0.04)',
-                  color: userType===type ? 'white' : 'rgba(255,255,255,0.42)',
-                  fontWeight:700,fontSize:13.5,cursor:'pointer',
-                  display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-                  boxShadow: userType===type ? '0 6px 22px rgba(255,107,107,0.42)' : 'none',
-                  transform: userType===type ? 'translateY(-2px)' : 'none',
-                  fontFamily:'inherit',
-                }}
+                onClick={() => setRoleLocked(false)}
+                className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-3 py-1.5 text-[11px] font-semibold text-white/90 backdrop-blur-sm"
               >
-                <span style={{fontSize:18}}>{type==='electrician' ? '⚡' : '🏪'}</span>
-                <span>{type==='electrician' ? 'Electrician' : 'Dealer'}</span>
+                <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.2} />
+                Back
+              </button>
+            )}
+            <h1 className="mt-2 text-[27px] font-black leading-8 tracking-[-0.04em]">{roleHeading}</h1>
+            <p className="mt-1.5 text-center text-[14px] font-semibold text-white/92">{isDealer ? 'Dealer' : 'Electrician'}</p>
+            <p className="mx-auto mt-1.5 max-w-[260px] text-[12px] leading-5 text-white/80">{roleDescription}</p>
+
+            <div className="relative mx-auto mt-4 h-[156px] w-[210px]">
+              <div className="absolute bottom-0 left-1/2 h-10 w-[170px] -translate-x-1/2 rounded-full bg-black/35 blur-xl" />
+              <div className="plate-rotate absolute bottom-4 left-1/2 h-[72px] w-[156px] -translate-x-1/2 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.03))] backdrop-blur-md" />
+              <div className="absolute bottom-7 left-1/2 h-[88px] w-[170px] -translate-x-1/2 rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] backdrop-blur-md rotate-[11deg]" />
+              <div className="absolute bottom-8 left-1/2 h-[88px] w-[170px] -translate-x-1/2 rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] backdrop-blur-md -rotate-[11deg]" />
+              <div className={`absolute left-1/2 top-6 h-[96px] w-[96px] -translate-x-1/2 rounded-full blur-md ${isDealer ? 'bg-[radial-gradient(circle,_rgba(125,160,232,0.95)_0%,_rgba(77,116,185,0.42)_36%,_transparent_72%)]' : 'bg-[radial-gradient(circle,_rgba(255,196,117,0.95)_0%,_rgba(255,118,69,0.42)_36%,_transparent_72%)]'}`} />
+              <div className="logo-float absolute inset-x-0 top-0 flex justify-center">
+                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] px-5 py-4 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_20px_45px_rgba(0,0,0,0.24)]">
+                  <img src={srvLogo} alt="SRV logo" className="h-auto w-[150px] object-contain" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`border-t border-white/10 bg-gradient-to-br ${theme.panel} p-4`}>
+          <div className="mx-auto flex max-w-[92%] items-center rounded-2xl bg-white/70 p-1 shadow-sm">
+            {(['login', 'signup'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setMode(tab)}
+                className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 active:scale-[0.98] ${
+                  mode === tab
+                    ? 'bg-white text-[#2D3561] shadow-sm'
+                    : 'text-[#8B88A3] hover:bg-white/70 hover:text-[#5E5A78]'
+                }`}
+              >
+                {tab === 'login' ? 'Login' : 'Create Account'}
               </button>
             ))}
           </div>
 
-          {/* Role badge */}
-          <div className="f3" style={{
-            padding:'10px 14px',borderRadius:12,marginBottom:22,
-            background: userType==='electrician' ? 'rgba(255,107,107,0.1)' : 'rgba(59,130,246,0.1)',
-            border: userType==='electrician' ? '1px solid rgba(255,107,107,0.22)' : '1px solid rgba(59,130,246,0.22)',
-            color: userType==='electrician' ? 'rgba(255,185,185,0.9)' : 'rgba(147,197,253,0.9)',
-            fontSize:12.5,lineHeight:1.55,transition:'all 0.35s ease',
-          }}>
-            {userType==='electrician'
-              ? '👷 Scan QR codes on SRV products and earn rewards instantly'
-              : '🏪 Manage your dealership, track orders and grow your business'}
-          </div>
+          {!roleLocked && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {([
+              { id: 'dealer', title: 'Dealer', sub: 'Business access', icon: <Building2 className="h-4.5 w-4.5" strokeWidth={2.2} /> },
+              { id: 'electrician', title: 'Electrician', sub: 'Rewards access', icon: <UserRound className="h-4.5 w-4.5" strokeWidth={2.2} /> },
+            ] as const)
+              .filter((item) => !roleLocked || item.id === userType)
+              .map((item) => {
+              const selected = userType === item.id;
 
-          {/* Phone input */}
-          <div className="f4" style={{marginBottom:8}}>
-            <div style={{
-              display:'flex',alignItems:'center',
-              background:'rgba(255,255,255,0.06)',
-              border: `1.5px solid ${phone.length>0 ? '#FF6B6B' : 'rgba(255,255,255,0.12)'}`,
-              borderRadius:14,padding:'0 16px',
-              boxShadow: phone.length>0 ? '0 0 0 4px rgba(255,107,107,0.12)' : 'none',
-              transition:'all 0.3s ease',
-            }}>
-              <div style={{display:'flex',alignItems:'center',gap:7,color:'rgba(255,255,255,0.72)',fontSize:14,fontWeight:600,whiteSpace:'nowrap',padding:'14px 0',flexShrink:0}}>
-                <span style={{fontSize:19}}>🇮🇳</span>
-                <span>+91</span>
-                <span style={{color:'rgba(255,255,255,0.15)',margin:'0 4px',fontWeight:300,fontSize:18}}>|</span>
-              </div>
-              <input
-                type="tel"
-                placeholder="Enter your mobile number"
-                value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g,'').slice(0,10))}
-                maxLength={10}
-                style={{
-                  flex:1,background:'transparent',border:'none',outline:'none',
-                  color:'white',fontSize:15.5,fontFamily:'inherit',fontWeight:500,
-                  padding:'14px 8px',letterSpacing:1.5,
-                }}
-              />
-              {phone.length===10 && (
-                <span className="chk" style={{color:'#4ade80',fontSize:19,fontWeight:700}}>✓</span>
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setUserType(item.id);
+                    setRoleLocked(true);
+                    setDealerPhone('');
+                    setDealerVerified(false);
+                  }}
+                  className={`rounded-[20px] border px-3.5 py-3.5 text-left transition-all ${selected ? theme.selected : 'border-[#ECE9F7] bg-white/75'}`}
+                >
+                  <div className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl ${selected ? theme.selectedIcon : 'bg-[#F4F2FB] text-[#8D86A8]'}`}>
+                    {item.icon}
+                  </div>
+                  <p className="mt-2 text-[15px] font-bold text-[#2E2230]">{item.title}</p>
+                  <p className="mt-0.5 text-[11px] text-[#8D88A0]">{item.sub}</p>
+                </button>
+                );
+              })}
+          </div>
+          )}
+
+          <div className="mt-5 rounded-[24px] border border-[#ECE9F7] bg-white/86 p-4 backdrop-blur-sm">
+            <div className="space-y-3">
+              {mode === 'signup' && (
+                <>
+                  <label className="block">
+                    <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Full name</span>
+                    <input
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      placeholder={isDealer ? 'Owner or manager name' : 'Enter your full name'}
+                      className={fieldClass}
+                    />
+                  </label>
+
+                  {isDealer ? (
+                    <label className="block">
+                      <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Business name</span>
+                      <input
+                        value={businessName}
+                        onChange={(event) => setBusinessName(event.target.value)}
+                        placeholder="Enter shop or firm name"
+                        className={fieldClass}
+                      />
+                    </label>
+                  ) : (
+                    <div className="rounded-[18px] border border-[#ECE9F7] bg-white p-3">
+                      <div className="flex items-end gap-2">
+                        <label className="block flex-1">
+                          <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Dealer phone</span>
+                          <input
+                            value={dealerPhone}
+                            onChange={(event) => {
+                              setDealerPhone(event.target.value.replace(/\D/g, '').slice(0, 10));
+                              setDealerVerified(false);
+                            }}
+                            placeholder="Enter dealer mobile number"
+                            className={fieldClass}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleVerifyDealer}
+                          disabled={dealerPhone.length !== 10}
+                          className={`rounded-2xl px-4 py-3 text-xs font-bold transition-all ${
+                            dealerPhone.length === 10 ? 'bg-[#2D3561] text-white' : 'bg-[#E7E5F1] text-[#9E9BB0]'
+                          }`}
+                        >
+                          Verify
+                        </button>
+                      </div>
+
+                      <div className="mt-2 min-h-[42px] rounded-2xl bg-[#F8F7FF] px-3 py-2">
+                        {matchedDealer ? (
+                          <div className="flex items-start gap-2 text-[#207A43]">
+                            <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                            <div>
+                              <p className="text-xs font-bold">{dealerVerified ? 'Dealer matched' : 'Dealer found'}</p>
+                              <p className="text-[11px] text-[#5C6A62]">{matchedDealer.dealerName}, {matchedDealer.city}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-[#8C7B82]">Enter a 10-digit dealer number.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {mode === 'login' ? (
+                <>
+                  <label className="block">
+                    <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Mobile number</span>
+                    <div className={`flex items-center rounded-2xl border-2 bg-white px-4 shadow-[0_8px_20px_rgba(61,74,118,0.06)] ${theme.field}`}>
+                      <span className="pr-3 text-sm font-bold text-[#7F7A99]">+91</span>
+                      <div className="mr-3 h-6 w-px bg-[#E5E1F0]" />
+                      <input
+                        type="tel"
+                        value={loginPhone}
+                        onChange={(event) => setLoginPhone(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="Enter mobile number"
+                        className="w-full bg-transparent py-3.5 text-[15px] font-medium tracking-[0.08em] text-[#2E2230] outline-none"
+                      />
+                      {loginPhone.length === 10 && <BadgeCheck className="h-5 w-5 text-[#22C55E]" strokeWidth={2.2} />}
+                    </div>
+                  </label>
+
+                  {loginOtpSent && (
+                    <div className="rounded-[18px] border border-[#ECE9F7] bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-[#7D7891]">OTP sent to +91 {loginPhone}</p>
+                        <button
+                          type="button"
+                          onClick={() => loginPhone.length === 10 && setLoginOtpSent(true)}
+                          disabled={loginPhone.length !== 10}
+                          className={`rounded-2xl px-4 py-2.5 text-xs font-bold transition-all ${
+                            loginPhone.length === 10 ? 'bg-[#2D3561] text-white' : 'bg-[#E7E5F1] text-[#9E9BB0]'
+                          }`}
+                        >
+                          Resend OTP
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                        <input
+                          value={loginOtp}
+                          onChange={(event) => setLoginOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="Enter 4-digit OTP"
+                          className={fieldClass}
+                        />
+                        {loginOtp.length === 4 && (
+                          <div className="flex items-center rounded-2xl bg-[#EFFFF2] px-3 text-[#207A43]">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <label className="block">
+                    <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Password</span>
+                    <div className={`flex items-center rounded-2xl border-2 bg-white px-4 shadow-[0_8px_20px_rgba(61,74,118,0.06)] ${theme.field}`}>
+                      <LockKeyhole className="mr-3 h-4.5 w-4.5 text-[#8D88A0]" />
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Enter password"
+                        className="w-full bg-transparent py-3.5 text-[15px] font-medium text-[#2E2230] outline-none"
+                      />
+                    </div>
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="block">
+                    <span className={`mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] ${theme.accent}`}>Mobile number</span>
+                    <div className={`flex items-center rounded-2xl border-2 bg-white px-4 shadow-[0_8px_20px_rgba(61,74,118,0.06)] ${theme.field}`}>
+                      <span className="pr-3 text-sm font-bold text-[#7F7A99]">+91</span>
+                      <div className="mr-3 h-6 w-px bg-[#E5E1F0]" />
+                      <input
+                        type="tel"
+                        value={signupPhone}
+                        onChange={(event) => setSignupPhone(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                        placeholder="Enter mobile number"
+                        className="w-full bg-transparent py-3.5 text-[15px] font-medium tracking-[0.08em] text-[#2E2230] outline-none"
+                      />
+                      {signupPhone.length === 10 && <BadgeCheck className="h-5 w-5 text-[#22C55E]" strokeWidth={2.2} />}
+                    </div>
+                  </label>
+
+                  {signupOtpSent && (
+                    <div className="rounded-[18px] border border-[#ECE9F7] bg-white p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-[#7D7891]">OTP sent to +91 {signupPhone}</p>
+                        <button
+                          type="button"
+                          onClick={() => signupPhone.length === 10 && setSignupOtpSent(true)}
+                          disabled={signupPhone.length !== 10}
+                          className={`rounded-2xl px-4 py-2.5 text-xs font-bold transition-all ${
+                            signupPhone.length === 10 ? 'bg-[#2D3561] text-white' : 'bg-[#E7E5F1] text-[#9E9BB0]'
+                          }`}
+                        >
+                          Resend OTP
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                        <input
+                          value={signupOtp}
+                          onChange={(event) => setSignupOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="Enter 4-digit OTP"
+                          className={fieldClass}
+                        />
+                        {signupOtp.length === 4 && (
+                          <div className="flex items-center rounded-2xl bg-[#EFFFF2] px-3 text-[#207A43]">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-            <p style={{color:'rgba(255,255,255,0.25)',fontSize:11.5,margin:'8px 4px 0'}}>
-              We'll send an OTP to verify your number
-            </p>
+
+            <button
+              onClick={handleContinue}
+              disabled={!canContinue || loading}
+              className={`mt-4 flex w-full items-center justify-center gap-2 rounded-[20px] px-4 py-3.5 text-sm font-bold text-white transition-all ${
+                canContinue && !loading ? `${theme.button} active:scale-[0.99]` : 'bg-[#E7E5F1] text-[#9E9BB0]'
+              }`}
+            >
+              {loading ? 'Opening dashboard...' : mode === 'login' ? 'Continue to dashboard' : 'Complete registration'}
+              {!loading && <ArrowRight className="h-4 w-4" strokeWidth={2.4} />}
+            </button>
           </div>
-
-          {/* Continue */}
-          <button
-            className="f5 cont-btn"
-            onClick={handleContinue}
-            disabled={phone.length<10||loading}
-            style={{
-              width:'100%',padding:'16px',borderRadius:14,border:'none',
-              background: phone.length===10 ? 'linear-gradient(135deg,#FF6B6B,#FF5252)' : 'rgba(255,255,255,0.07)',
-              color:'white',fontSize:15,fontWeight:700,fontFamily:'inherit',
-              cursor: phone.length===10 ? 'pointer' : 'not-allowed',
-              display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-              boxShadow: phone.length===10 ? '0 10px 30px rgba(255,107,107,0.42)' : 'none',
-              transform: phone.length===10 ? 'translateY(-1px)' : 'none',
-              marginBottom:18,marginTop:10,
-            }}
-          >
-            {loading ? <span className="spin-el"/> : <><span>Continue</span><span style={{fontSize:19}}>→</span></>}
-          </button>
-
-          <p className="f6" style={{textAlign:'center',color:'rgba(255,255,255,0.22)',fontSize:11.5,lineHeight:1.7,margin:0}}>
-            By continuing you agree to our{' '}
-            <span style={{color:'rgba(255,107,107,0.75)',cursor:'pointer'}}>Terms of Service</span> &{' '}
-            <span style={{color:'rgba(255,107,107,0.75)',cursor:'pointer'}}>Privacy Policy</span>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Landing ───
-  return (
-    <div className="min-h-screen bg-[#F8F7FF] flex flex-col max-w-md mx-auto">
-      <div className="bg-gradient-to-br from-[#2D3561] to-[#3D4575] px-5 py-8 flex flex-col items-center gap-4">
-        <div className="w-20 h-20 bg-gradient-to-br from-[#FF6B6B] to-[#FF5252] rounded-3xl flex items-center justify-center shadow-xl animate-bounce-in animate-glow-pulse">
-          <Zap className="w-10 h-10 text-white animate-sparkle" fill="white"/>
-        </div>
-        <div className="text-center animate-fade-in-up delay-200">
-          <h1 className="text-white font-bold text-lg tracking-wide">SRV Electricals</h1>
-          <p className="text-white/50 text-xs tracking-wide mt-1">Your Smart Rewards Platform</p>
-        </div>
-        <div className="flex items-center gap-2 w-full mt-2">
-          {[
-            {icon:<Check className="w-4 h-4 text-white" strokeWidth={3}/>,label:'Buy',sub:'SRV product',delay:'delay-300'},
-            {icon:<ScanQrCode className="w-4 h-4 text-white" strokeWidth={2.5}/>,label:'Scan',sub:'QR on box',delay:'delay-400'},
-            {icon:<Gift className="w-4 h-4 text-white" strokeWidth={2.5}/>,label:'Win',sub:'Rewards',delay:'delay-500'},
-          ].map((step,i)=>(
-            <>
-              {i>0&&<div key={`a${i}`} className="text-white/25 text-lg">›</div>}
-              <div key={step.label} className={`flex-1 bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col items-center gap-2 animate-fade-in-up ${step.delay} hover-lift`}>
-                <div className="w-8 h-8 bg-[#FF6B6B] rounded-xl flex items-center justify-center">{step.icon}</div>
-                <div className="text-white text-[10px] font-semibold">{step.label}</div>
-                <div className="text-white/40 text-[9px]">{step.sub}</div>
-              </div>
-            </>
-          ))}
-        </div>
-      </div>
-      <div className="flex-1 px-4 py-5 flex flex-col">
-        <h2 className="text-[#2D3561] font-bold mb-2 animate-fade-in-up delay-200">Buy. Scan. Get rewarded.</h2>
-        <p className="text-[#9090A8] text-xs leading-relaxed mb-6 animate-fade-in-up delay-300">
-          Every SRV product has a hidden QR code. Scan it to earn points and unlock cashback, gifts & vouchers.
-        </p>
-        <div className="mt-auto space-y-3">
-          <button onClick={()=>setStep('login')} className="w-full bg-gradient-to-r from-[#FF6B6B] to-[#FF5252] text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95 animate-fade-in-up delay-400 ripple-container animate-glow-pulse">
-            Get Started →
-          </button>
-          <button onClick={()=>setStep('login')} className="w-full border-2 border-[#E0DFEF] text-[#2D3561] font-semibold py-3 px-4 rounded-xl hover:bg-gray-50 transition-all animate-fade-in-up delay-500 ripple-container">
-            Already have an account? Sign in
-          </button>
         </div>
       </div>
     </div>
